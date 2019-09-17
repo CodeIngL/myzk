@@ -30,17 +30,18 @@ import org.slf4j.LoggerFactory;
  * SyncRequestProcessor.
  */
 public class ProposalRequestProcessor implements RequestProcessor {
-    private static final Logger LOG =
-        LoggerFactory.getLogger(ProposalRequestProcessor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ProposalRequestProcessor.class);
 
+    //leader
     LeaderZooKeeperServer zks;
-    
+
+    //下一个处理器
     RequestProcessor nextProcessor;
 
+    //同步处理器
     SyncRequestProcessor syncProcessor;
 
-    public ProposalRequestProcessor(LeaderZooKeeperServer zks,
-            RequestProcessor nextProcessor) {
+    public ProposalRequestProcessor(LeaderZooKeeperServer zks, RequestProcessor nextProcessor) {
         this.zks = zks;
         this.nextProcessor = nextProcessor;
         AckRequestProcessor ackProcessor = new AckRequestProcessor(zks.getLeader());
@@ -71,10 +72,12 @@ public class ProposalRequestProcessor implements RequestProcessor {
         if(request instanceof LearnerSyncRequest){
             zks.getLeader().processSync((LearnerSyncRequest)request);
         } else {
-                nextProcessor.processRequest(request);
+            //下一个处理器去处理请求
+            nextProcessor.processRequest(request);
             if (request.hdr != null) {
                 // We need to sync and get consensus on any transactions
                 try {
+                    //提出议案
                     zks.getLeader().propose(request);
                 } catch (XidRolloverException e) {
                     throw new RequestProcessorException(e.getMessage(), e);

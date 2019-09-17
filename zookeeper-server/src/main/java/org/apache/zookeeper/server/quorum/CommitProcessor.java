@@ -49,6 +49,7 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements RequestP
     LinkedList<Request> committedRequests = new LinkedList<Request>();
 
     RequestProcessor nextProcessor;
+    //等待处理的请求
     ArrayList<Request> toProcess = new ArrayList<Request>();
 
     /**
@@ -70,23 +71,25 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements RequestP
     @Override
     public void run() {
         try {
+            /**
+             * 异步处理添加进队列的请求
+             */
             Request nextPending = null;            
             while (!finished) {
                 int len = toProcess.size();
                 for (int i = 0; i < len; i++) {
+                    //调用下一个请求进行处理
                     nextProcessor.processRequest(toProcess.get(i));
                 }
                 toProcess.clear();
                 synchronized (this) {
-                    if ((queuedRequests.size() == 0 || nextPending != null)
-                            && committedRequests.size() == 0) {
+                    if ((queuedRequests.size() == 0 || nextPending != null) && committedRequests.size() == 0) {
                         wait();
                         continue;
                     }
                     // First check and see if the commit came in for the pending
                     // request
-                    if ((queuedRequests.size() == 0 || nextPending != null)
-                            && committedRequests.size() > 0) {
+                    if ((queuedRequests.size() == 0 || nextPending != null) && committedRequests.size() > 0) {
                         Request r = committedRequests.remove();
                         /*
                          * We match with nextPending so that we can move to the
@@ -94,9 +97,7 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements RequestP
                          * use nextPending because it has the cnxn member set
                          * properly.
                          */
-                        if (nextPending != null
-                                && nextPending.sessionId == r.sessionId
-                                && nextPending.cxid == r.cxid) {
+                        if (nextPending != null && nextPending.sessionId == r.sessionId && nextPending.cxid == r.cxid) {
                             // we want to send our version of the request.
                             // the pointer to the connection in the request
                             nextPending.hdr = r.hdr;
@@ -173,7 +174,10 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements RequestP
         if (LOG.isDebugEnabled()) {
             LOG.debug("Processing request:: " + request);
         }
-        
+
+        /**
+         * 将请求添加到队列中
+         */
         if (!finished) {
             queuedRequests.add(request);
             notifyAll();

@@ -64,11 +64,17 @@ public class Leader {
         LOG.info("TCP NoDelay set to: " + nodelay);
     }
 
+    /**
+     * 议案
+     */
     static public class Proposal {
+        //议案对应Quorum包
         public QuorumPacket packet;
 
+        //相应集合
         public HashSet<Long> ackSet = new HashSet<Long>();
 
+        //对应的提出议案的请求
         public Request request;
 
         @Override
@@ -87,8 +93,7 @@ public class Leader {
     LearnerCnxAcceptor cnxAcceptor;
     
     // list of all the followers
-    private final HashSet<LearnerHandler> learners =
-        new HashSet<LearnerHandler>();
+    private final HashSet<LearnerHandler> learners = new HashSet<LearnerHandler>();
 
     /**
      * Returns a copy of the current learner snapshot
@@ -100,8 +105,7 @@ public class Leader {
     }
 
     // list of followers that are ready to follow (i.e synced with the leader)
-    private final HashSet<LearnerHandler> forwardingFollowers =
-        new HashSet<LearnerHandler>();
+    private final HashSet<LearnerHandler> forwardingFollowers = new HashSet<LearnerHandler>();
 
     private final ProposalStats proposalStats;
 
@@ -307,12 +311,17 @@ public class Leader {
      */
     final static int INFORM = 8;
 
+    //提出的议案
     ConcurrentMap<Long, Proposal> outstandingProposals = new ConcurrentHashMap<Long, Proposal>();
 
+    //要应用的议案
     ConcurrentLinkedQueue<Proposal> toBeApplied = new ConcurrentLinkedQueue<Proposal>();
 
     Proposal newLeaderProposal = new Proposal();
-    
+
+    /**
+     * learner接受者，接收learner的连接，并加入自己维护的结构中
+     */
     class LearnerCnxAcceptor extends ZooKeeperThread{
         private volatile boolean stop = false;
 
@@ -331,8 +340,7 @@ public class Leader {
                         s.setSoTimeout(self.tickTime * self.initLimit);
                         s.setTcpNoDelay(nodelay);
 
-                        BufferedInputStream is = new BufferedInputStream(
-                                s.getInputStream());
+                        BufferedInputStream is = new BufferedInputStream(s.getInputStream());
                         LearnerHandler fh = new LearnerHandler(s, is, Leader.this);
                         fh.start();
                     } catch (SocketException e) {
@@ -557,6 +565,9 @@ public class Leader {
     /**
      * Keep a count of acks that are received by the leader for a particular
      * proposal
+     * <p>
+     *     保留领导者为特定提案收到的ack数
+     * </p>
      * 
      * @param zxid
      *                the zxid of the proposal sent out
@@ -567,8 +578,7 @@ public class Leader {
             LOG.trace("Ack zxid: 0x{}", Long.toHexString(zxid));
             for (Proposal p : outstandingProposals.values()) {
                 long packetZxid = p.packet.getZxid();
-                LOG.trace("outstanding proposal: 0x{}",
-                        Long.toHexString(packetZxid));
+                LOG.trace("outstanding proposal: 0x{}", Long.toHexString(packetZxid));
             }
             LOG.trace("outstanding proposals all");
         }
@@ -581,40 +591,43 @@ public class Leader {
              */
             return;
         }
-    
+
+        //没有议案
         if (outstandingProposals.size() == 0) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("outstanding is 0");
             }
             return;
         }
+        //议案已经提交
         if (lastCommitted >= zxid) {
             if (LOG.isDebugEnabled()) {
-                LOG.debug("proposal has already been committed, pzxid: 0x{} zxid: 0x{}",
-                        Long.toHexString(lastCommitted), Long.toHexString(zxid));
+                LOG.debug("proposal has already been committed, pzxid: 0x{} zxid: 0x{}", Long.toHexString(lastCommitted), Long.toHexString(zxid));
             }
             // The proposal has already been committed
             return;
         }
+        //获得议案
         Proposal p = outstandingProposals.get(zxid);
         if (p == null) {
-            LOG.warn("Trying to commit future proposal: zxid 0x{} from {}",
-                    Long.toHexString(zxid), followerAddr);
+            LOG.warn("Trying to commit future proposal: zxid 0x{} from {}", Long.toHexString(zxid), followerAddr);
             return;
         }
-        
+
+        //ack集合加入sid
         p.ackSet.add(sid);
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Count for zxid: 0x{} is {}",
-                    Long.toHexString(zxid), p.ackSet.size());
+            LOG.debug("Count for zxid: 0x{} is {}", Long.toHexString(zxid), p.ackSet.size());
         }
+        //验证数据是否在其中，是否是大多数投票了
         if (self.getQuorumVerifier().containsQuorum(p.ackSet)){             
             if (zxid != lastCommitted+1) {
-                LOG.warn("Commiting zxid 0x{} from {} not first!",
-                        Long.toHexString(zxid), followerAddr);
+                LOG.warn("Commiting zxid 0x{} from {} not first!", Long.toHexString(zxid), followerAddr);
                 LOG.warn("First is 0x{}", Long.toHexString(lastCommitted + 1));
             }
+            //删除
             outstandingProposals.remove(zxid);
+            //加入待应用的地方
             if (p.request != null) {
                 toBeApplied.add(p);
             }
@@ -622,8 +635,10 @@ public class Leader {
             if (p.request == null) {
                 LOG.warn("Going to commmit null request for proposal: {}", p);
             }
+            //提交
             commit(zxid);
             inform(p);
+            //提交处理请求
             zk.commitProcessor.commit(p.request);
             if(pendingSyncs.containsKey(zxid)){
                 for(LearnerSyncRequest r: pendingSyncs.remove(zxid)) {
@@ -668,10 +683,11 @@ public class Leader {
          */
         public void processRequest(Request request) throws RequestProcessorException {
             // request.addRQRec(">tobe");
+            //下一个请求
             next.processRequest(request);
+            //选择
             Proposal p = toBeApplied.peek();
-            if (p != null && p.request != null
-                    && p.request.zxid == request.zxid) {
+            if (p != null && p.request != null && p.request.zxid == request.zxid) {
                 toBeApplied.remove();
             }
         }
@@ -694,6 +710,7 @@ public class Leader {
      *                the packet to be sent
      */
     void sendPacket(QuorumPacket qp) {
+        //发给follow
         synchronized (forwardingFollowers) {
             for (LearnerHandler f : forwardingFollowers) {                
                 f.queuePacket(qp);
@@ -714,6 +731,9 @@ public class Leader {
 
     /**
      * Create a commit packet and send it to all the members of the quorum
+     * <p>
+     *     创建提交数据包并将其发送给quorum所有成员
+     * </p>
      * 
      * @param zxid
      */
@@ -721,6 +741,7 @@ public class Leader {
         synchronized(this){
             lastCommitted = zxid;
         }
+        //发送QuorumPacket包
         QuorumPacket qp = new QuorumPacket(Leader.COMMIT, zxid, null, null);
         sendPacket(qp);
     }
@@ -767,15 +788,16 @@ public class Leader {
          * election. Force a re-election instead. See ZOOKEEPER-1277
          */
         if ((request.zxid & 0xffffffffL) == 0xffffffffL) {
-            String msg =
-                    "zxid lower 32 bits have rolled over, forcing re-election, and therefore new epoch start";
+            String msg = "zxid lower 32 bits have rolled over, forcing re-election, and therefore new epoch start";
             shutdown(msg);
             throw new XidRolloverException(msg);
         }
         byte[] data = SerializeUtils.serializeRequest(request);
         proposalStats.setLastProposalSize(data.length);
+        //构建QuorumPacket包
         QuorumPacket pp = new QuorumPacket(Leader.PROPOSAL, request.zxid, data, null);
-        
+
+        //构建议案
         Proposal p = new Proposal();
         p.packet = pp;
         p.request = request;
@@ -785,7 +807,9 @@ public class Leader {
             }
 
             lastProposed = p.packet.getZxid();
+            //放入outstandingProposal中
             outstandingProposals.put(lastProposed, p);
+            //发送议案
             sendPacket(pp);
         }
         return p;

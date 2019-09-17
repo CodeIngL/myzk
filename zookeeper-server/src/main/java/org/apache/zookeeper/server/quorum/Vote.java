@@ -23,6 +23,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+/**
+ * 投票内容
+ */
 public class Vote {
     private static final Logger LOG = LoggerFactory.getLogger(Vote.class);
     
@@ -85,15 +88,16 @@ public class Vote {
         this.peerEpoch = peerEpoch;
         this.version = 0x0;
     }
-    
+
+    //版本
     final private int version;
-    
+    //服务器标识
     final private long id;
-    
+    //zxid
     final private long zxid;
-    
+    //
     final private long electionEpoch;
-    
+    //
     final private long peerEpoch;
     
     public int getVersion() {
@@ -136,6 +140,11 @@ public class Vote {
          * using only id and peer epoch. Second, if one version
          * is 0x0 and the other isn't, then we only use the
          * leader id. This case is here to enable rolling upgrades.
+         * <p>
+         *     下面的逻辑中有两件事情。
+         *     首先，我们仅使用id和peer epoch来比较选举中的服务器投票。
+         *     其次，如果一个版本是0x0而另一个版本不是，那么我们只使用领导者ID。 这种情况是为了实现滚动升级。
+         *
          * 
          * {@see https://issues.apache.org/jira/browse/ZOOKEEPER-1805}
          */

@@ -68,6 +68,7 @@ public class QuorumPeerMain {
 
     private static final String USAGE = "Usage: QuorumPeerMain configfile";
 
+    //分布式中的端点
     protected QuorumPeer quorumPeer;
 
     /**
@@ -99,12 +100,14 @@ public class QuorumPeerMain {
     protected void initializeAndRun(String[] args)
         throws ConfigException, IOException
     {
+        //quorum模式下的配置
         QuorumPeerConfig config = new QuorumPeerConfig();
         if (args.length == 1) {
             config.parse(args[0]);
         }
 
         // Start and schedule the the purge task
+        // 开始并调度清理任务
         DatadirCleanupManager purgeMgr = new DatadirCleanupManager(config
                 .getDataDir(), config.getDataLogDir(), config
                 .getSnapRetainCount(), config.getPurgeInterval());
@@ -116,10 +119,16 @@ public class QuorumPeerMain {
             LOG.warn("Either no config or no quorum defined in config, running "
                     + " in standalone mode");
             // there is only server in the quorum -- run as standalone
+            // 运行独立模式
             ZooKeeperServerMain.main(args);
         }
     }
 
+    /**
+     * 运行quorum模式
+     * @param config
+     * @throws IOException
+     */
     public void runFromConfig(QuorumPeerConfig config) throws IOException {
       try {
           ManagedUtil.registerLog4jMBeans();
@@ -133,16 +142,24 @@ public class QuorumPeerMain {
           cnxnFactory.configure(config.getClientPortAddress(),
                                 config.getMaxClientCnxns());
 
+          //获得端点
           quorumPeer = getQuorumPeer();
 
+          //设置集群的对端
           quorumPeer.setQuorumPeers(config.getServers());
+          //
           quorumPeer.setTxnFactory(new FileTxnSnapLog(
                   new File(config.getDataLogDir()),
                   new File(config.getDataDir())));
+          //选举算法
           quorumPeer.setElectionType(config.getElectionAlg());
+          //机器id
           quorumPeer.setMyid(config.getServerId());
+          //设置时间单元
           quorumPeer.setTickTime(config.getTickTime());
+          //初始化限制
           quorumPeer.setInitLimit(config.getInitLimit());
+          //同步限制
           quorumPeer.setSyncLimit(config.getSyncLimit());
           quorumPeer.setQuorumListenOnAllIPs(config.getQuorumListenOnAllIPs());
           quorumPeer.setCnxnFactory(cnxnFactory);
@@ -155,6 +172,7 @@ public class QuorumPeerMain {
           quorumPeer.setSyncEnabled(config.getSyncEnabled());
 
           // sets quorum sasl authentication configurations
+          // 设置认证相关，如果配置了相关的配置的话
           quorumPeer.setQuorumSaslEnabled(config.quorumEnableSasl);
           if(quorumPeer.isQuorumSaslAuthEnabled()){
               quorumPeer.setQuorumServerSaslRequired(config.quorumServerRequireSasl);
@@ -165,8 +183,10 @@ public class QuorumPeerMain {
           }
 
           quorumPeer.setQuorumCnxnThreadsSize(config.quorumCnxnThreadsSize);
+          //初始化
           quorumPeer.initialize();
 
+          //开始
           quorumPeer.start();
           quorumPeer.join();
       } catch (InterruptedException e) {
