@@ -40,13 +40,13 @@
       <artifactId>zookeeper-server</artifactId>
       <version>3.4.14</version>
     </dependency>
-    <dependency>
+<!--    <dependency>
       <groupId>org.apache.zookeeper</groupId>
       <artifactId>zookeeper-server</artifactId>
       <version>3.4.14</version>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
     <dependency>
       <groupId>com.github.spotbugs</groupId>
       <artifactId>spotbugs-annotations</artifactId>
