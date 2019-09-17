@@ -35,6 +35,13 @@ import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
  * <p>
  * The very first processor in the chain of request processors is a
  * ReadOnlyRequestProcessor which drops state-changing requests.
+ *
+ * <p>
+ *     ZooKeeperServer在对等体与大多数分区时发挥作用。 处理只读客户端，但丢弃来自非只读客户端的连接。
+ * </p>
+ * <p>
+ *     请求处理器链中的第一个处理器是ReadOnlyRequestProcessor，它丢弃状态改变请求
+ * </p>
  */
 public class ReadOnlyZooKeeperServer extends QuorumZooKeeperServer {
 
@@ -47,9 +54,12 @@ public class ReadOnlyZooKeeperServer extends QuorumZooKeeperServer {
 
     @Override
     protected void setupRequestProcessors() {
+        //构建final
         RequestProcessor finalProcessor = new FinalRequestProcessor(this);
+        //构建准备
         RequestProcessor prepProcessor = new PrepRequestProcessor(this, finalProcessor);
         ((PrepRequestProcessor) prepProcessor).start();
+        //构建首个
         firstProcessor = new ReadOnlyRequestProcessor(this, prepProcessor);
         ((ReadOnlyRequestProcessor) firstProcessor).start();
     }

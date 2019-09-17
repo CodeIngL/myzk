@@ -35,8 +35,8 @@ import org.apache.zookeeper.txn.TxnHeader;
 
 /**
  * Just like the standard ZooKeeperServer. We just replace the request
- * processors: FollowerRequestProcessor -> CommitProcessor ->
- * FinalRequestProcessor
+ * processors:
+ * FollowerRequestProcessor -> CommitProcessor -> FinalRequestProcessor
  * 
  * A SyncRequestProcessor is also spawned off to log proposals from the leader.
  */
@@ -71,15 +71,16 @@ public class FollowerZooKeeperServer extends LearnerZooKeeperServer {
 
     @Override
     protected void setupRequestProcessors() {
+        //构建final
         RequestProcessor finalProcessor = new FinalRequestProcessor(this);
-        commitProcessor = new CommitProcessor(finalProcessor,
-                Long.toString(getServerId()), true,
-                getZooKeeperServerListener());
+        //构建提交
+        commitProcessor = new CommitProcessor(finalProcessor, Long.toString(getServerId()), true, getZooKeeperServerListener());
         commitProcessor.start();
+        //构建首个
         firstProcessor = new FollowerRequestProcessor(this, commitProcessor);
         ((FollowerRequestProcessor) firstProcessor).start();
-        syncProcessor = new SyncRequestProcessor(this,
-                new SendAckRequestProcessor((Learner)getFollower()));
+        //构建同步
+        syncProcessor = new SyncRequestProcessor(this, new SendAckRequestProcessor((Learner)getFollower()));
         syncProcessor.start();
     }
 

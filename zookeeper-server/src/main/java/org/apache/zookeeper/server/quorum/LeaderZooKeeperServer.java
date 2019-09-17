@@ -34,9 +34,8 @@ import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 /**
  * 
  * Just like the standard ZooKeeperServer. We just replace the request
- * processors: PrepRequestProcessor -> ProposalRequestProcessor ->
- * CommitProcessor -> Leader.ToBeAppliedRequestProcessor ->
- * FinalRequestProcessor
+ * processors:
+ * PrepRequestProcessor -> ProposalRequestProcessor -> CommitProcessor -> Leader.ToBeAppliedRequestProcessor -> FinalRequestProcessor
  */
 public class LeaderZooKeeperServer extends QuorumZooKeeperServer {
     CommitProcessor commitProcessor;
@@ -58,16 +57,17 @@ public class LeaderZooKeeperServer extends QuorumZooKeeperServer {
     
     @Override
     protected void setupRequestProcessors() {
+        //构建final
         RequestProcessor finalProcessor = new FinalRequestProcessor(this);
-        RequestProcessor toBeAppliedProcessor = new Leader.ToBeAppliedRequestProcessor(
-                finalProcessor, getLeader().toBeApplied);
-        commitProcessor = new CommitProcessor(toBeAppliedProcessor,
-                Long.toString(getServerId()), false,
-                getZooKeeperServerListener());
+        //构建toBeApplied
+        RequestProcessor toBeAppliedProcessor = new Leader.ToBeAppliedRequestProcessor(finalProcessor, getLeader().toBeApplied);
+        //构建Commit
+        commitProcessor = new CommitProcessor(toBeAppliedProcessor, Long.toString(getServerId()), false, getZooKeeperServerListener());
         commitProcessor.start();
-        ProposalRequestProcessor proposalProcessor = new ProposalRequestProcessor(this,
-                commitProcessor);
+        //构建议案处理器
+        ProposalRequestProcessor proposalProcessor = new ProposalRequestProcessor(this, commitProcessor);
         proposalProcessor.initialize();
+        //构建首个处理器
         firstProcessor = new PrepRequestProcessor(this, proposalProcessor);
         ((PrepRequestProcessor)firstProcessor).start();
     }

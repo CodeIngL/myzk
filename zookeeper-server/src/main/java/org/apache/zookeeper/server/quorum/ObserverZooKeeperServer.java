@@ -98,11 +98,11 @@ public class ObserverZooKeeperServer extends LearnerZooKeeperServer {
         // We might consider changing the processor behaviour of 
         // Observers to, for example, remove the disk sync requirements.
         // Currently, they behave almost exactly the same as followers.
+        //构建final
         RequestProcessor finalProcessor = new FinalRequestProcessor(this);
-        commitProcessor = new CommitProcessor(finalProcessor,
-                Long.toString(getServerId()), true,
-                getZooKeeperServerListener());
-        commitProcessor.start();
+        //构建提交
+        commitProcessor = new CommitProcessor(finalProcessor, Long.toString(getServerId()), true, getZooKeeperServerListener());commitProcessor.start();
+        //构建首个
         firstProcessor = new ObserverRequestProcessor(this, commitProcessor);
         ((ObserverRequestProcessor) firstProcessor).start();
 
@@ -114,7 +114,9 @@ public class ObserverZooKeeperServer extends LearnerZooKeeperServer {
          * However, this may degrade performance as it has to write to disk
          * and do periodic snapshot which may double the memory requirements
          */
+        //支持同步
         if (syncRequestProcessorEnabled) {
+            //构建同步
             syncProcessor = new SyncRequestProcessor(this, null);
             syncProcessor.start();
         }
