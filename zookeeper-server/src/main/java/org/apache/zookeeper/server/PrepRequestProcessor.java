@@ -97,6 +97,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
 
     LinkedBlockingQueue<Request> submittedRequests = new LinkedBlockingQueue<Request>();
 
+    //下一个要处理的处理器
     RequestProcessor nextProcessor;
 
     ZooKeeperServer zks;
@@ -119,6 +120,9 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
     @Override
     public void run() {
         try {
+            /**
+             * 处理接收的请求
+             */
             while (true) {
                 Request request = submittedRequests.take();
                 long traceMask = ZooTrace.CLIENT_REQUEST_TRACE_MASK;
@@ -535,27 +539,33 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
         
         try {
             switch (request.type) {
+                //创建操作
                 case OpCode.create:
                 CreateRequest createRequest = new CreateRequest();
                 pRequest2Txn(request.type, zks.getNextZxid(), request, createRequest, true);
                 break;
             case OpCode.delete:
+                //删除操作
                 DeleteRequest deleteRequest = new DeleteRequest();               
                 pRequest2Txn(request.type, zks.getNextZxid(), request, deleteRequest, true);
                 break;
             case OpCode.setData:
-                SetDataRequest setDataRequest = new SetDataRequest();                
+                //设置数据
+                SetDataRequest setDataRequest = new SetDataRequest();
                 pRequest2Txn(request.type, zks.getNextZxid(), request, setDataRequest, true);
                 break;
             case OpCode.setACL:
+                //设置ACL
                 SetACLRequest setAclRequest = new SetACLRequest();                
                 pRequest2Txn(request.type, zks.getNextZxid(), request, setAclRequest, true);
                 break;
             case OpCode.check:
+                //校验操作
                 CheckVersionRequest checkRequest = new CheckVersionRequest();              
                 pRequest2Txn(request.type, zks.getNextZxid(), request, checkRequest, true);
                 break;
             case OpCode.multi:
+                //？？what操作
                 MultiTransactionRecord multiRequest = new MultiTransactionRecord();
                 try {
                     ByteBufferInputStream.byteBuffer2Record(request.request, multiRequest);
@@ -638,8 +648,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
             case OpCode.getChildren2:
             case OpCode.ping:
             case OpCode.setWatches:
-                zks.sessionTracker.checkSession(request.sessionId,
-                        request.getOwner());
+                zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
                 break;
             default:
                 LOG.warn("unknown type " + request.type);
@@ -760,6 +769,10 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
         return acl.size() > 0;
     }
 
+    /**
+     * 预处理处理器，简单将请求提交到请求集合中，等待消费处理
+     * @param request
+     */
     public void processRequest(Request request) {
         // request.addRQRec(">prep="+zks.outstandingChanges.size());
         submittedRequests.add(request);
