@@ -72,12 +72,17 @@ public class FileSnap implements SnapShot {
         // we run through 100 snapshots (not all of them)
         // if we cannot get it running within 100 snapshots
         // we should  give up
+        // 如果我们无法在100个快照中运行我们应该放弃的100个快照，我们会运行100个快照（并非所有快照）
+
+        //找到最近的快照文件，100个，按时间排序
         List<File> snapList = findNValidSnapshots(100);
         if (snapList.size() == 0) {
             return -1L;
         }
+
         File snap = null;
         boolean foundValid = false;
+        //从近开始
         for (int i = 0; i < snapList.size(); i++) {
             snap = snapList.get(i);
             InputStream snapIS = null;
@@ -107,6 +112,7 @@ public class FileSnap implements SnapShot {
         if (!foundValid) {
             throw new IOException("Not able to find valid snapshots in " + snapDir);
         }
+        //获得最后的processedZxid
         dt.lastProcessedZxid = Util.getZxidFromName(snap.getName(), SNAPSHOT_FILE_PREFIX);
         return dt.lastProcessedZxid;
     }
@@ -118,14 +124,14 @@ public class FileSnap implements SnapShot {
      * @param ia the input archive to restore from
      * @throws IOException
      */
-    public void deserialize(DataTree dt, Map<Long, Integer> sessions,
-            InputArchive ia) throws IOException {
+    public void deserialize(DataTree dt, Map<Long, Integer> sessions, InputArchive ia) throws IOException {
         FileHeader header = new FileHeader();
+        //  magic:ZKSN
+        //  version:
+        //  dbid:
         header.deserialize(ia, "fileheader");
         if (header.getMagic() != SNAP_MAGIC) {
-            throw new IOException("mismatching magic headers "
-                    + header.getMagic() + 
-                    " !=  " + FileSnap.SNAP_MAGIC);
+            throw new IOException("mismatching magic headers " + header.getMagic() + " !=  " + FileSnap.SNAP_MAGIC);
         }
         SerializeUtils.deserializeSnapshot(dt,ia,sessions);
     }
