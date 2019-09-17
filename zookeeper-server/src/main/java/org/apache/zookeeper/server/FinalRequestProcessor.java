@@ -298,6 +298,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 SetWatches setWatches = new SetWatches();
                 // XXX We really should NOT need this!!!!
                 request.request.rewind();
+                //转换为记录
                 ByteBufferInputStream.byteBuffer2Record(request.request, setWatches);
                 long relativeZxid = setWatches.getRelativeZxid();
                 zks.getZKDatabase().setWatches(relativeZxid, 

@@ -70,7 +70,9 @@ public class ZKDatabase {
      */
     protected DataTree dataTree;
     protected ConcurrentHashMap<Long, Integer> sessionsWithTimeouts;
+    //快照日志
     protected FileTxnSnapLog snapLog;
+    //最小提交，最大提交
     protected long minCommittedLog, maxCommittedLog;
     //议案的数量
     public static final int commitLogCount = 500;
@@ -216,12 +218,17 @@ public class ZKDatabase {
     /**
      * load the database from the disk onto memory and also add 
      * the transactions to the committedlog in memory.
+     * <p>
+     *     将数据库从磁盘加载到内存中，并将事务添加到内存中的committedlog。
+     * </p>
      * @return the last valid zxid on disk
      * @throws IOException
      */
     public long loadDataBase() throws IOException {
+        //使用快照文件加载
         long zxid = snapLog.restore(dataTree, sessionsWithTimeouts, commitProposalPlaybackListener);
         initialized = true;
+        //返回文件最大zxid
         return zxid;
     }
 
@@ -236,6 +243,11 @@ public class ZKDatabase {
         return zxid;
     }
 
+    /**
+     * 添加到已经提交议案
+     * @param hdr
+     * @param txn
+     */
     private void addCommittedProposal(TxnHeader hdr, Record txn) {
         Request r = new Request(null, 0, hdr.getCxid(), hdr.getType(), null, null);
         r.txn = txn;

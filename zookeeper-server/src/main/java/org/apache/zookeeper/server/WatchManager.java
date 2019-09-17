@@ -41,11 +41,9 @@ import org.apache.zookeeper.Watcher.Event.KeeperState;
 public class WatchManager {
     private static final Logger LOG = LoggerFactory.getLogger(WatchManager.class);
 
-    private final HashMap<String, HashSet<Watcher>> watchTable =
-        new HashMap<String, HashSet<Watcher>>();
+    private final HashMap<String, HashSet<Watcher>> watchTable = new HashMap<String, HashSet<Watcher>>();
 
-    private final HashMap<Watcher, HashSet<String>> watch2Paths =
-        new HashMap<Watcher, HashSet<String>>();
+    private final HashMap<Watcher, HashSet<String>> watch2Paths = new HashMap<Watcher, HashSet<String>>();
 
     public synchronized int size(){
         int result = 0;
@@ -95,20 +93,26 @@ public class WatchManager {
         return triggerWatch(path, type, null);
     }
 
+    /**
+     * 触发Watcher
+     * @param path
+     * @param type
+     * @param supress
+     * @return
+     */
     public Set<Watcher> triggerWatch(String path, EventType type, Set<Watcher> supress) {
-        WatchedEvent e = new WatchedEvent(type,
-                KeeperState.SyncConnected, path);
+        WatchedEvent e = new WatchedEvent(type, KeeperState.SyncConnected, path);
         HashSet<Watcher> watchers;
         synchronized (this) {
+            //删除这个路径上的watcher
             watchers = watchTable.remove(path);
             if (watchers == null || watchers.isEmpty()) {
                 if (LOG.isTraceEnabled()) {
-                    ZooTrace.logTraceMessage(LOG,
-                            ZooTrace.EVENT_DELIVERY_TRACE_MASK,
-                            "No watchers for " + path);
+                    ZooTrace.logTraceMessage(LOG, ZooTrace.EVENT_DELIVERY_TRACE_MASK, "No watchers for " + path);
                 }
                 return null;
             }
+            //继续删除
             for (Watcher w : watchers) {
                 HashSet<String> paths = watch2Paths.get(w);
                 if (paths != null) {
@@ -116,10 +120,12 @@ public class WatchManager {
                 }
             }
         }
+
         for (Watcher w : watchers) {
             if (supress != null && supress.contains(w)) {
                 continue;
             }
+            //watcher处理事件
             w.process(e);
         }
         return watchers;

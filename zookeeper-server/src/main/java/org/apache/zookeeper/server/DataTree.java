@@ -47,7 +47,6 @@ import org.apache.zookeeper.common.PathTrie;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.data.StatPersisted;
-import org.apache.zookeeper.server.upgrade.DataNodeV1;
 import org.apache.zookeeper.txn.CheckVersionTxn;
 import org.apache.zookeeper.txn.CreateTxn;
 import org.apache.zookeeper.txn.DeleteTxn;
@@ -653,12 +652,6 @@ public class DataTree {
         }
     }
 
-    public Long getACL(DataNodeV1 oldDataNode) {
-        synchronized (oldDataNode) {
-            return aclCache.convertAcls(oldDataNode.acl);
-        }
-    }
-
     public int aclCacheSize() {
         return aclCache.size();
     }
@@ -1083,6 +1076,8 @@ public class DataTree {
         aclCache.deserialize(ia);
         nodes.clear();
         pTrie.clear();
+        //path
+        //--node
         String path = ia.readString("path");
         while (!path.equals("/")) {
             DataNode node = new DataNode();
@@ -1174,17 +1169,21 @@ public class DataTree {
         ephemerals.clear();
     }
 
-    public void setWatches(long relativeZxid, List<String> dataWatches,
-            List<String> existWatches, List<String> childWatches,
-            Watcher watcher) {
+    /**
+     * 设置watch
+     * @param relativeZxid
+     * @param dataWatches
+     * @param existWatches
+     * @param childWatches
+     * @param watcher
+     */
+    public void setWatches(long relativeZxid, List<String> dataWatches, List<String> existWatches, List<String> childWatches, Watcher watcher) {
         for (String path : dataWatches) {
             DataNode node = getNode(path);
             if (node == null) {
-                watcher.process(new WatchedEvent(EventType.NodeDeleted,
-                            KeeperState.SyncConnected, path));
+                watcher.process(new WatchedEvent(EventType.NodeDeleted, KeeperState.SyncConnected, path));
             } else if (node.stat.getMzxid() > relativeZxid) {
-                watcher.process(new WatchedEvent(EventType.NodeDataChanged,
-                            KeeperState.SyncConnected, path));
+                watcher.process(new WatchedEvent(EventType.NodeDataChanged, KeeperState.SyncConnected, path));
             } else {
                 this.dataWatches.addWatch(path, watcher);
             }
@@ -1192,8 +1191,7 @@ public class DataTree {
         for (String path : existWatches) {
             DataNode node = getNode(path);
             if (node != null) {
-                watcher.process(new WatchedEvent(EventType.NodeCreated,
-                            KeeperState.SyncConnected, path));
+                watcher.process(new WatchedEvent(EventType.NodeCreated, KeeperState.SyncConnected, path));
             } else {
                 this.dataWatches.addWatch(path, watcher);
             }
@@ -1201,11 +1199,9 @@ public class DataTree {
         for (String path : childWatches) {
             DataNode node = getNode(path);
             if (node == null) {
-                watcher.process(new WatchedEvent(EventType.NodeDeleted,
-                            KeeperState.SyncConnected, path));
+                watcher.process(new WatchedEvent(EventType.NodeDeleted, KeeperState.SyncConnected, path));
             } else if (node.stat.getPzxid() > relativeZxid) {
-                watcher.process(new WatchedEvent(EventType.NodeChildrenChanged,
-                            KeeperState.SyncConnected, path));
+                watcher.process(new WatchedEvent(EventType.NodeChildrenChanged, KeeperState.SyncConnected, path));
             } else {
                 this.childWatches.addWatch(path, watcher);
             }

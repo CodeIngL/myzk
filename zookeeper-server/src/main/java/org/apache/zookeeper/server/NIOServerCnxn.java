@@ -54,6 +54,9 @@ import org.apache.zookeeper.server.util.OSMXBean;
 /**
  * This class handles communication with clients using NIO. There is one per
  * client, but only one thread doing the communication.
+ * <p>
+ *     此类使用NIO处理与客户端的通信。 每个客户端有一个，但只有一个线程在进行通信。
+ * </p>
  */
 public class NIOServerCnxn extends ServerCnxn {
     static final Logger LOG = LoggerFactory.getLogger(NIOServerCnxn.class);
