@@ -37,6 +37,9 @@ import org.apache.zookeeper.server.persistence.FileSnap;
 
 /**
  * Dump a snapshot file to stdout.
+ * <p>
+ *     dump 快照文件到标准输出
+ * </p>
  */
 @InterfaceAudience.Public
 public class SnapshotFormatter {
