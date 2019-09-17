@@ -55,6 +55,10 @@ import org.apache.zookeeper.txn.TxnHeader;
  * server states that includes the sessions, datatree and the
  * committed logs. It is booted up  after reading the logs
  * and snapshots from the disk.
+ * <p>
+ *     此类维护zookeeper服务器状态的内存数据库，其中包括会话，数据树和已提交的日志。
+ *     他从磁盘读取日志和快照并启动
+ * </p>
  */
 public class ZKDatabase {
     
@@ -68,8 +72,10 @@ public class ZKDatabase {
     protected ConcurrentHashMap<Long, Integer> sessionsWithTimeouts;
     protected FileTxnSnapLog snapLog;
     protected long minCommittedLog, maxCommittedLog;
+    //议案的数量
     public static final int commitLogCount = 500;
     protected static int commitLogBuffer = 700;
+    //已经提交的议案
     protected LinkedList<Proposal> committedLog = new LinkedList<Proposal>();
     protected ReentrantReadWriteLock logLock = new ReentrantReadWriteLock();
     volatile private boolean initialized = false;
@@ -248,8 +254,11 @@ public class ZKDatabase {
         WriteLock wl = logLock.writeLock();
         try {
             wl.lock();
+            //议案的数量大于500
             if (committedLog.size() > commitLogCount) {
+                //删除头
                 committedLog.removeFirst();
+                //跟新最小值
                 minCommittedLog = committedLog.getFirst().packet.getZxid();
             }
             if (committedLog.size() == 0) {
@@ -257,13 +266,16 @@ public class ZKDatabase {
                 maxCommittedLog = request.zxid;
             }
 
-            //
+            //序列化请求
             byte[] data = SerializeUtils.serializeRequest(request);
+            //构建议案请求
             QuorumPacket pp = new QuorumPacket(Leader.PROPOSAL, request.zxid, data, null);
+            //构建内存的议案
             Proposal p = new Proposal();
             p.packet = pp;
             p.request = request;
             committedLog.add(p);
+            //更新议案的最大值
             maxCommittedLog = p.packet.getZxid();
         } finally {
             wl.unlock();

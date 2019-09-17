@@ -68,6 +68,16 @@ import org.slf4j.LoggerFactory;
  * The tree maintains two parallel data structures: a hashtable that maps from
  * full paths to DataNodes and a tree of DataNodes. All accesses to a path is
  * through the hashtable. The tree is traversed only when serializing to disk.
+ *
+ * <p>
+ *     该类维护树数据结构。 它没有任何网络或客户端连接代码，因此可以独立测试。
+ * </p>
+ * <p>
+ *     该树维护着两个并行的数据结构：
+ *     一个从完整路（全路径）径映射到DataNodes的哈希表和一个DataNodes树。
+ *     对路径的所有访问都是通过哈希表进行的。
+ *     仅在序列化到磁盘时使用遍历树。
+ * </p>
  */
 public class DataTree {
     private static final Logger LOG = LoggerFactory.getLogger(DataTree.class);
@@ -75,6 +85,9 @@ public class DataTree {
     /**
      * This hashtable provides a fast lookup to the datanodes. The tree is the
      * source of truth and is where all the locking occurs
+     * <p>
+     *     此hashtable提供对数据节点的快速查找。 树是truth的来源，是所有锁定发生的地方
+     * </p>
      */
     private final ConcurrentHashMap<String, DataNode> nodes =
         new ConcurrentHashMap<String, DataNode>();

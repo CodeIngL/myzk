@@ -58,6 +58,7 @@ import org.jboss.netty.channel.MessageEvent;
 public class NettyServerCnxn extends ServerCnxn {
     Logger LOG = LoggerFactory.getLogger(NettyServerCnxn.class);
     Channel channel;
+    //队列中buffer
     ChannelBuffer queuedBuffer;
     volatile boolean throttled;
     ByteBuffer bb;
@@ -137,6 +138,7 @@ public class NettyServerCnxn extends ServerCnxn {
     }
 
     private static final byte[] fourBytes = new byte[4];
+
     static class ResumeMessageEvent implements MessageEvent {
         Channel channel;
         ResumeMessageEvent(Channel channel) {
@@ -732,19 +734,19 @@ public class NettyServerCnxn extends ServerCnxn {
         return false;
     }
 
+    /**
+     * 接收到消息
+     * @param message
+     */
     public void receiveMessage(ChannelBuffer message) {
         try {
             while(message.readable() && !throttled) {
                 if (bb != null) {
                     if (LOG.isTraceEnabled()) {
-                        LOG.trace("message readable " + message.readableBytes()
-                                + " bb len " + bb.remaining() + " " + bb);
+                        LOG.trace("message readable " + message.readableBytes() + " bb len " + bb.remaining() + " " + bb);
                         ByteBuffer dat = bb.duplicate();
                         dat.flip();
-                        LOG.trace(Long.toHexString(sessionId)
-                                + " bb 0x"
-                                + ChannelBuffers.hexDump(
-                                        ChannelBuffers.copiedBuffer(dat)));
+                        LOG.trace(Long.toHexString(sessionId) + " bb 0x" + ChannelBuffers.hexDump(ChannelBuffers.copiedBuffer(dat)));
                     }
 
                     if (bb.remaining() > message.readableBytes()) {
@@ -755,34 +757,29 @@ public class NettyServerCnxn extends ServerCnxn {
                     bb.limit(bb.capacity());
 
                     if (LOG.isTraceEnabled()) {
-                        LOG.trace("after readBytes message readable "
-                                + message.readableBytes()
-                                + " bb len " + bb.remaining() + " " + bb);
+                        LOG.trace("after readBytes message readable " + message.readableBytes() + " bb len " + bb.remaining() + " " + bb);
                         ByteBuffer dat = bb.duplicate();
                         dat.flip();
-                        LOG.trace("after readbytes "
-                                + Long.toHexString(sessionId)
-                                + " bb 0x"
-                                + ChannelBuffers.hexDump(
-                                        ChannelBuffers.copiedBuffer(dat)));
+                        LOG.trace("after readbytes " + Long.toHexString(sessionId) + " bb 0x" + ChannelBuffers.hexDump(ChannelBuffers.copiedBuffer(dat)));
                     }
                     if (bb.remaining() == 0) {
                         packetReceived();
                         bb.flip();
 
+                        //zk服务，委托给其持有的请求处理器来进行相关的处理
                         ZooKeeperServer zks = this.zkServer;
                         if (zks == null || !zks.isRunning()) {
                             throw new IOException("ZK down");
                         }
                         if (initialized) {
+                            //使用特定zk服务角色来处理这个packet
                             zks.processPacket(this, bb);
 
                             if (zks.shouldThrottle(outstandingCount.incrementAndGet())) {
                                 disableRecvNoWait();
                             }
                         } else {
-                            LOG.debug("got conn req request from "
-                                    + getRemoteSocketAddress());
+                            LOG.debug("got conn req request from " + getRemoteSocketAddress());
                             zks.processConnectRequest(this, bb);
                             initialized = true;
                         }
@@ -790,15 +787,10 @@ public class NettyServerCnxn extends ServerCnxn {
                     }
                 } else {
                     if (LOG.isTraceEnabled()) {
-                        LOG.trace("message readable "
-                                + message.readableBytes()
-                                + " bblenrem " + bbLen.remaining());
+                        LOG.trace("message readable " + message.readableBytes() + " bblenrem " + bbLen.remaining());
                         ByteBuffer dat = bbLen.duplicate();
                         dat.flip();
-                        LOG.trace(Long.toHexString(sessionId)
-                                + " bbLen 0x"
-                                + ChannelBuffers.hexDump(
-                                        ChannelBuffers.copiedBuffer(dat)));
+                        LOG.trace(Long.toHexString(sessionId) + " bbLen 0x" + ChannelBuffers.hexDump(ChannelBuffers.copiedBuffer(dat)));
                     }
 
                     if (message.readableBytes() < bbLen.remaining()) {
@@ -844,7 +836,11 @@ public class NettyServerCnxn extends ServerCnxn {
     public void disableRecv() {
         disableRecvNoWait().awaitUninterruptibly();
     }
-    
+
+    /**
+     * 限制接收，但是不等待
+     * @return
+     */
     private ChannelFuture disableRecvNoWait() {
         throttled = true;
         if (LOG.isDebugEnabled()) {

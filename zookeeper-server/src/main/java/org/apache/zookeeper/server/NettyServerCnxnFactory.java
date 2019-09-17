@@ -51,8 +51,7 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
     ServerBootstrap bootstrap;
     Channel parentChannel;
     ChannelGroup allChannels = new DefaultChannelGroup("zkServerCnxns");
-    HashMap<InetAddress, Set<NettyServerCnxn>> ipMap =
-        new HashMap<InetAddress, Set<NettyServerCnxn>>( );
+    HashMap<InetAddress, Set<NettyServerCnxn>> ipMap = new HashMap<InetAddress, Set<NettyServerCnxn>>( );
     InetSocketAddress localAddress;
     int maxClientCnxns = 60;
     
@@ -82,8 +81,8 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
                 LOG.trace("Channel connected " + e);
             }
             allChannels.add(ctx.getChannel());
-            NettyServerCnxn cnxn = new NettyServerCnxn(ctx.getChannel(),
-                    zkServer, NettyServerCnxnFactory.this);
+            NettyServerCnxn cnxn = new NettyServerCnxn(ctx.getChannel(), zkServer, NettyServerCnxnFactory.this);
+            //连接的时候降低连接对象attache到上下文中
             ctx.setAttachment(cnxn);
             addCnxn(cnxn);
         }
@@ -118,6 +117,12 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
             }
         }
 
+        /**
+         * 请求接收
+         * @param ctx
+         * @param e
+         * @throws Exception
+         */
         @Override
         public void messageReceived(ChannelHandlerContext ctx, MessageEvent e)
             throws Exception
@@ -127,8 +132,7 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
             }
             try {
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("New message " + e.toString()
-                            + " from " + ctx.getChannel());
+                    LOG.debug("New message " + e.toString() + " from " + ctx.getChannel());
                 }
                 NettyServerCnxn cnxn = (NettyServerCnxn)ctx.getAttachment();
                 synchronized(cnxn) {
@@ -140,20 +144,21 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
             }
         }
 
+        /**
+         * 处理消息
+         * @param e
+         * @param cnxn
+         */
         private void processMessage(MessageEvent e, NettyServerCnxn cnxn) {
             if (LOG.isDebugEnabled()) {
-                LOG.debug(Long.toHexString(cnxn.sessionId) + " queuedBuffer: "
-                        + cnxn.queuedBuffer);
+                LOG.debug(Long.toHexString(cnxn.sessionId) + " queuedBuffer: " + cnxn.queuedBuffer);
             }
 
             if (e instanceof NettyServerCnxn.ResumeMessageEvent) {
                 LOG.debug("Received ResumeMessageEvent");
                 if (cnxn.queuedBuffer != null) {
                     if (LOG.isTraceEnabled()) {
-                        LOG.trace("processing queue "
-                                + Long.toHexString(cnxn.sessionId)
-                                + " queuedBuffer 0x"
-                                + ChannelBuffers.hexDump(cnxn.queuedBuffer));
+                        LOG.trace("processing queue " + Long.toHexString(cnxn.sessionId) + " queuedBuffer 0x" + ChannelBuffers.hexDump(cnxn.queuedBuffer));
                     }
                     cnxn.receiveMessage(cnxn.queuedBuffer);
                     if (!cnxn.queuedBuffer.readable()) {
@@ -167,11 +172,10 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
                 }
                 cnxn.channel.setReadable(true);
             } else {
+                //正常的消息处理
                 ChannelBuffer buf = (ChannelBuffer)e.getMessage();
                 if (LOG.isTraceEnabled()) {
-                    LOG.trace(Long.toHexString(cnxn.sessionId)
-                            + " buf 0x"
-                            + ChannelBuffers.hexDump(buf));
+                    LOG.trace(Long.toHexString(cnxn.sessionId) + " buf 0x" + ChannelBuffers.hexDump(buf));
                 }
                 
                 if (cnxn.throttled) {
@@ -183,25 +187,21 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
                     }
                     cnxn.queuedBuffer.writeBytes(buf);
                     if (LOG.isTraceEnabled()) {
-                        LOG.trace(Long.toHexString(cnxn.sessionId)
-                                + " queuedBuffer 0x"
-                                + ChannelBuffers.hexDump(cnxn.queuedBuffer));
+                        LOG.trace(Long.toHexString(cnxn.sessionId) + " queuedBuffer 0x" + ChannelBuffers.hexDump(cnxn.queuedBuffer));
                     }
                 } else {
+                    //正常的处理逻辑
                     LOG.debug("not throttled");
                     if (cnxn.queuedBuffer != null) {
                         if (LOG.isTraceEnabled()) {
-                            LOG.trace(Long.toHexString(cnxn.sessionId)
-                                    + " queuedBuffer 0x"
-                                    + ChannelBuffers.hexDump(cnxn.queuedBuffer));
+                            LOG.trace(Long.toHexString(cnxn.sessionId) + " queuedBuffer 0x" + ChannelBuffers.hexDump(cnxn.queuedBuffer));
                         }
                         cnxn.queuedBuffer.writeBytes(buf);
                         if (LOG.isTraceEnabled()) {
-                            LOG.trace(Long.toHexString(cnxn.sessionId)
-                                    + " queuedBuffer 0x"
-                                    + ChannelBuffers.hexDump(cnxn.queuedBuffer));
+                            LOG.trace(Long.toHexString(cnxn.sessionId) + " queuedBuffer 0x" + ChannelBuffers.hexDump(cnxn.queuedBuffer));
                         }
 
+                        //接收消息
                         cnxn.receiveMessage(cnxn.queuedBuffer);
                         if (!cnxn.queuedBuffer.readable()) {
                             LOG.debug("Processed queue - no bytes remaining");
@@ -219,9 +219,7 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
                             cnxn.queuedBuffer.writeBytes(buf);
                             if (LOG.isTraceEnabled()) {
                                 LOG.trace("Copy is " + cnxn.queuedBuffer);
-                                LOG.trace(Long.toHexString(cnxn.sessionId)
-                                        + " queuedBuffer 0x"
-                                        + ChannelBuffers.hexDump(cnxn.queuedBuffer));
+                                LOG.trace(Long.toHexString(cnxn.sessionId) + " queuedBuffer 0x" + ChannelBuffers.hexDump(cnxn.queuedBuffer));
                             }
                         }
                     }
@@ -243,10 +241,7 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
     CnxnChannelHandler channelHandler = new CnxnChannelHandler();
     
     NettyServerCnxnFactory() {
-        bootstrap = new ServerBootstrap(
-                new NioServerSocketChannelFactory(
-                        Executors.newCachedThreadPool(),
-                        Executors.newCachedThreadPool()));
+        bootstrap = new ServerBootstrap(new NioServerSocketChannelFactory(Executors.newCachedThreadPool(), Executors.newCachedThreadPool()));
         // parent channel
         bootstrap.setOption("reuseAddress", true);
         // child channels

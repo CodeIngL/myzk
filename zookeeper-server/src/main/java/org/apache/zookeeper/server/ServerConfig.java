@@ -37,10 +37,14 @@ public class ServerConfig {
     //// If you update the configuration parameters be sure
     //// to update the "conf" 4letter word
     ////
+    //如果更新配置参数，请务必更新“conf”4letter字
     protected InetSocketAddress clientPortAddress;
+    //数据目录
     protected String dataDir;
+    //日志目录
     protected String dataLogDir;
     protected int tickTime = ZooKeeperServer.DEFAULT_TICK_TIME;
+    //最大支持的连接
     protected int maxClientCnxns;
     /** defaults to -1 if not set explicitly */
     protected int minSessionTimeout = -1;
@@ -58,19 +62,27 @@ public class ServerConfig {
             throw new IllegalArgumentException("Invalid number of arguments:" + Arrays.toString(args));
         }
 
+        //暴露的端口
         clientPortAddress = new InetSocketAddress(Integer.parseInt(args[0]));
+        //数据目录
         dataDir = args[1];
+        //日志目录
         dataLogDir = dataDir;
         if (args.length >= 3) {
+            //tickTime
             tickTime = Integer.parseInt(args[2]);
         }
         if (args.length == 4) {
+            //最大支持的客户端连接数
             maxClientCnxns = Integer.parseInt(args[3]);
         }
     }
 
     /**
      * Parse a ZooKeeper configuration file
+     * <p>
+     *     解析一个配置文件
+     * </p>
      * @param path the patch of the configuration file
      * @return ServerConfig configured wrt arguments
      * @throws ConfigException error processing configuration

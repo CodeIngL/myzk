@@ -34,6 +34,9 @@ import org.apache.zookeeper.Watcher.Event.KeeperState;
 /**
  * This class manages watches. It allows watches to be associated with a string
  * and removes watchers and their watches in addition to managing triggers.
+ * <p>
+ *     这个class管理watches。 除了watches触发器之外，它还允许watches与Strings相关联，并删除watcher及其watches
+ * </p>
  */
 public class WatchManager {
     private static final Logger LOG = LoggerFactory.getLogger(WatchManager.class);

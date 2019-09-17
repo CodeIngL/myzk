@@ -34,6 +34,9 @@ import org.apache.zookeeper.txn.TxnHeader;
  * This is the structure that represents a request moving through a chain of
  * RequestProcessors. There are various pieces of information that is tacked
  * onto the request as it is processed.
+ * <p>
+ *     这是表示通过RequestProcessors链移动的请求的结构。 在处理请求时，会在请求中添加各种信息。
+ * </p>
  */
 public class Request {
     private static final Logger LOG = LoggerFactory.getLogger(Request.class);
