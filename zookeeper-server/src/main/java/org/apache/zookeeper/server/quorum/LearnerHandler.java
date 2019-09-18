@@ -161,18 +161,22 @@ public class LearnerHandler extends ZooKeeperThread {
     private final BufferedInputStream bufferedInput;
     private BufferedOutputStream bufferedOutput;
 
-    LearnerHandler(Socket sock, BufferedInputStream bufferedInput,
-                   Leader leader) throws IOException {
+    /**
+     * 构建Learner处理器，一个一线程
+     * @param sock
+     * @param bufferedInput
+     * @param leader
+     * @throws IOException
+     */
+    LearnerHandler(Socket sock, BufferedInputStream bufferedInput, Leader leader) throws IOException {
         super("LearnerHandler-" + sock.getRemoteSocketAddress());
         this.sock = sock;
         this.leader = leader;
         this.bufferedInput = bufferedInput;
         try {
-            leader.self.authServer.authenticate(sock,
-                    new DataInputStream(bufferedInput));
+            leader.self.authServer.authenticate(sock, new DataInputStream(bufferedInput));
         } catch (IOException e) {
-            LOG.error("Server failed to authenticate quorum learner, addr: {}, closing connection",
-                    sock.getRemoteSocketAddress(), e);
+            LOG.error("Server failed to authenticate quorum learner, addr: {}, closing connection", sock.getRemoteSocketAddress(), e);
             try {
                 sock.close();
             } catch (IOException ie) {
@@ -312,6 +316,9 @@ public class LearnerHandler extends ZooKeeperThread {
     /**
      * This thread will receive packets from the peer and process them and
      * also listen to new connections from new peers.
+     * <p>
+     *     该线程将接收来自对等体的数据包并处理它们，并且还监听来自新对等体的新连接。
+     * </p>
      */
     @Override
     public void run() {
@@ -324,19 +331,23 @@ public class LearnerHandler extends ZooKeeperThread {
             bufferedOutput = new BufferedOutputStream(sock.getOutputStream());
             oa = BinaryOutputArchive.getArchive(bufferedOutput);
 
+            //构建quorum通信包
             QuorumPacket qp = new QuorumPacket();
             ia.readRecord(qp, "packet");
             if(qp.getType() != Leader.FOLLOWERINFO && qp.getType() != Leader.OBSERVERINFO){
-            	LOG.error("First packet " + qp.toString()
-                        + " is not FOLLOWERINFO or OBSERVERINFO!");
+                //类型不是FOLLOWERINFO和OBSERVERINFO，打印一下错误，然后我们忽略他，并返回
+            	LOG.error("First packet " + qp.toString() + " is not FOLLOWERINFO or OBSERVERINFO!");
                 return;
             }
+            //包数据
             byte learnerInfoData[] = qp.getData();
+
             if (learnerInfoData != null) {
-            	if (learnerInfoData.length == 8) {
+            	if (learnerInfoData.length == 8) { //长度是8，是一个特殊的包
             		ByteBuffer bbsid = ByteBuffer.wrap(learnerInfoData);
             		this.sid = bbsid.getLong();
             	} else {
+            	    //我们从中直接还原sid和version，在某个版本之后，添加了version，上述是兼容形式
             		LearnerInfo li = new LearnerInfo();
             		ByteBufferInputStream.byteBuffer2Record(ByteBuffer.wrap(learnerInfoData), li);
             		this.sid = li.getServerid();
@@ -351,7 +362,8 @@ public class LearnerHandler extends ZooKeeperThread {
             if (qp.getType() == Leader.OBSERVERINFO) {
                   learnerType = LearnerType.OBSERVER;
             }            
-            
+
+            //获得对方提交上来的epoch
             long lastAcceptedEpoch = ZxidUtils.getEpochFromZxid(qp.getZxid());
             
             long peerLastZxid;
@@ -480,8 +492,7 @@ public class LearnerHandler extends ZooKeeperThread {
                 rl.unlock();
             }
 
-             QuorumPacket newLeaderQP = new QuorumPacket(Leader.NEWLEADER,
-                    ZxidUtils.makeZxid(newEpoch, 0), null, null);
+             QuorumPacket newLeaderQP = new QuorumPacket(Leader.NEWLEADER, ZxidUtils.makeZxid(newEpoch, 0), null, null);
              if (getVersion() < 0x10000) {
                 oa.writeRecord(newLeaderQP, "packet");
             } else {
@@ -497,12 +508,9 @@ public class LearnerHandler extends ZooKeeperThread {
             
             /* if we are not truncating or sending a diff just send a snapshot */
             if (packetToSend == Leader.SNAP) {
-                LOG.info("Sending snapshot last zxid of peer is 0x"
-                        + Long.toHexString(peerLastZxid) + " " 
-                        + " zxid of leader is 0x"
-                        + Long.toHexString(leaderLastZxid)
-                        + "sent zxid of db as 0x" 
-                        + Long.toHexString(zxidToSend));
+                LOG.info("Sending snapshot last zxid of peer is 0x" + Long.toHexString(peerLastZxid) + " "
+                        + " zxid of leader is 0x" + Long.toHexString(leaderLastZxid)
+                        + "sent zxid of db as 0x" + Long.toHexString(zxidToSend));
                 // Dump data to peer
                 leader.zk.getZKDatabase().serializeSnapshot(oa);
                 oa.writeString("BenWasHere", "signature");
@@ -510,10 +518,10 @@ public class LearnerHandler extends ZooKeeperThread {
             bufferedOutput.flush();
             
             // Start sending packets
+            // 开始发送新的packets
             new Thread() {
                 public void run() {
-                    Thread.currentThread().setName(
-                            "Sender-" + sock.getRemoteSocketAddress());
+                    Thread.currentThread().setName("Sender-" + sock.getRemoteSocketAddress());
                     try {
                         sendPackets();
                     } catch (InterruptedException e) {

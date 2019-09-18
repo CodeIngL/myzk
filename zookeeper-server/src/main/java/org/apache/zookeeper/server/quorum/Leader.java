@@ -329,6 +329,9 @@ public class Leader {
             super("LearnerCnxAcceptor-" + ss.getLocalSocketAddress());
         }
 
+        /**
+         * 为每一个连接上来的对端分配一个LearnerHandler，用于标着对端，进行处理
+         */
         @Override
         public void run() {
             try {
@@ -337,6 +340,7 @@ public class Leader {
                         Socket s = ss.accept();
                         // start with the initLimit, once the ack is processed
                         // in LearnerHandler switch to the syncLimit
+                        // 一旦在LearnerHandler中处理ack切换到syncLimit，就从initLimit开始
                         s.setSoTimeout(self.tickTime * self.initLimit);
                         s.setTcpNoDelay(nodelay);
 
