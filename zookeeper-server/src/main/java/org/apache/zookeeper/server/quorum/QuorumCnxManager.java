@@ -71,7 +71,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>
  *     端点连接管理器，维护了端点，端点直接的连接，以及投票通讯，
- *     这个类的网络通讯用于进行选举
+ *     这个类的网络通讯用于进行选举。not用于处理典型的客户端上的连接，客户端上的连接通过
+ *     另一个端口进行
  * </p>
  * 
  */
@@ -214,7 +215,8 @@ public class QuorumCnxManager {
         initializeAuth(mySid, authServer, authLearner, quorumCnxnThreadsSize,
                 quorumSaslAuthEnabled);
 
-        // Starts listener thread that waits for connection requests 
+        // Starts listener thread that waits for connection requests
+        // 开始监听等待所有的连接请求
         listener = new Listener();
     }
 

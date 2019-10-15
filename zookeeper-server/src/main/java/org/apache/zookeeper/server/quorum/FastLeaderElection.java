@@ -218,6 +218,12 @@ public class FastLeaderElection implements Election {
      * implements two sub-classes: WorkReceiver and  WorkSender. The
      * functionality of each is obvious from the name. Each of these
      * spawns a new thread.
+     * <p>
+     *     消息处理程序的多线程实现。
+     *     Messenger实现了两个子类：WorkReceiver和WorkSender。
+     *     从名称中可以明显看出每个功能。 这些都产生一个新线程
+     * </p>
+     * 信使，消息进行相互传递的信使
      */
 
     protected class Messenger {
@@ -225,6 +231,7 @@ public class FastLeaderElection implements Election {
         /**
          * Receives messages from instance of QuorumCnxManager on
          * method run(), and processes such messages.
+         *
          * <p>
          *     在方法run()上接收来自QuorumCnxManager实例的消息，并处理此类消息。
          * </p>
@@ -434,6 +441,9 @@ public class FastLeaderElection implements Election {
         /**
          * This worker simply dequeues a message to send and
          * and queues it on the manager's queue.
+         * <p>
+         *     该worker仅使要发送的消息出队，并将其排队在manager的队列中。
+         * </p>
          */
 
         class WorkerSender extends ZooKeeperThread {
@@ -771,6 +781,7 @@ public class FastLeaderElection implements Election {
 
     /**
      * Returns the initial vote value of server identifier.
+     * 获得服务初始化定义的id，如果是Observer返回最小值
      *
      * @return long
      */
@@ -782,6 +793,7 @@ public class FastLeaderElection implements Election {
 
     /**
      * Returns initial last logged zxid.
+     * @see #getInitId()
      *
      * @return long
      */
@@ -793,6 +805,9 @@ public class FastLeaderElection implements Election {
 
     /**
      * Returns the initial vote value of the peer epoch.
+     *
+     * @see #getInitLastLoggedZxid()
+     * @see #getInitId()
      *
      * @return long
      */
@@ -824,15 +839,17 @@ public class FastLeaderElection implements Election {
             LOG.warn("Failed to register with JMX", e);
             self.jmxLeaderElectionBean = null;
         }
+
         //选举开始时间
         if (self.start_fle == 0) {
            self.start_fle = Time.currentElapsedTime();
         }
 
         try {
-            //两个特殊的存储结构
+            //两个特殊的存储结构，存储投票
             HashMap<Long, Vote> recvset = new HashMap<Long, Vote>();
 
+            //两个特殊的存储结构，存储投票
             HashMap<Long, Vote> outofelection = new HashMap<Long, Vote>();
 
             int notTimeout = finalizeWait;
@@ -843,6 +860,7 @@ public class FastLeaderElection implements Election {
             }
 
             LOG.info("New election. My id =  " + self.getId() + ", proposed zxid=0x" + Long.toHexString(proposedZxid));
+            //发送通知给集群中其他节点
             sendNotifications();
 
             /*

@@ -115,8 +115,7 @@ public class Learner {
         dos.writeLong(clientId);
         dos.writeInt(timeout);
         dos.close();
-        QuorumPacket qp = new QuorumPacket(Leader.REVALIDATE, -1, baos
-                .toByteArray(), null);
+        QuorumPacket qp = new QuorumPacket(Leader.REVALIDATE, -1, baos.toByteArray(), null);
         pendingRevalidations.put(clientId, cnxn);
         if (LOG.isTraceEnabled()) {
             ZooTrace.logTraceMessage(LOG,
@@ -167,6 +166,7 @@ public class Learner {
     
     /**
      * send a request packet to the leader
+     * 发送一个请求到leader上
      *
      * @param request
      *                the request from the client

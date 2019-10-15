@@ -25,6 +25,15 @@ import org.apache.zookeeper.server.quorum.Vote;
  * 选举类
  */
 public interface Election {
+    /**
+     * 寻找leader
+     * @return 最终的投票
+     * @throws InterruptedException
+     */
     public Vote lookForLeader() throws InterruptedException;
+
+    /**
+     * 结束关闭
+     */
     public void shutdown();
 }

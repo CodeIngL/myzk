@@ -60,6 +60,7 @@ import org.slf4j.LoggerFactory;
  * </p>
  */
 public class LearnerHandler extends ZooKeeperThread {
+
     private static final Logger LOG = LoggerFactory.getLogger(LearnerHandler.class);
 
     protected final Socket sock;    
