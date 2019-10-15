@@ -76,6 +76,12 @@ import org.apache.zookeeper.OpResult.ErrorResult;
  *
  * This RequestProcessor counts on ZooKeeperServer to populate the
  * outstandingRequests member of ZooKeeperServer.
+ *
+ * <p>
+ *     该请求处理器实际上应用与请求关联的任何事务，并为任何查询提供服务。 它始终位于RequestProcessor链的末尾（因此具有名称），因此它没有nextProcessor成员。
+ * <p>
+ *     这个RequestProcessor依靠ZooKeeperServer来填充ZooKeeperServer的未完成请求成员
+ * </p>
  */
 public class FinalRequestProcessor implements RequestProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(FinalRequestProcessor.class);

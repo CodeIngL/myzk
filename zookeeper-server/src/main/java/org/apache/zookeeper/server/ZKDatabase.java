@@ -69,6 +69,7 @@ public class ZKDatabase {
      * all these members.
      */
     protected DataTree dataTree;
+    //session和其超时时间
     protected ConcurrentHashMap<Long, Integer> sessionsWithTimeouts;
     //快照日志
     protected FileTxnSnapLog snapLog;

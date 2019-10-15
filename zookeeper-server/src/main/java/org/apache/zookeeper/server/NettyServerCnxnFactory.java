@@ -50,6 +50,7 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
 
     ServerBootstrap bootstrap;
     Channel parentChannel;
+    //所有channel
     ChannelGroup allChannels = new DefaultChannelGroup("zkServerCnxns");
     HashMap<InetAddress, Set<NettyServerCnxn>> ipMap = new HashMap<InetAddress, Set<NettyServerCnxn>>( );
     InetSocketAddress localAddress;
@@ -59,6 +60,10 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
      * This is an inner class since we need to extend SimpleChannelHandler, but
      * NettyServerCnxnFactory already extends ServerCnxnFactory. By making it inner
      * this class gets access to the member variables and methods.
+     * <p>
+     *     这是一个内部类，因为我们需要扩展SimpleChannelHandler，但是NettyServerCnxnFactory已经扩展了ServerCnxnFactory。
+     *     通过使其内部类化，该类可以访问成员变量和方法。
+     * </p>
      */
     @Sharable
     class CnxnChannelHandler extends SimpleChannelHandler {
@@ -145,7 +150,7 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
         }
 
         /**
-         * 处理消息
+         * 处理消息连接相关的消息
          * @param e
          * @param cnxn
          */
@@ -239,7 +244,10 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
     }
     
     CnxnChannelHandler channelHandler = new CnxnChannelHandler();
-    
+
+    /**
+     * 网络服务工厂类
+     */
     NettyServerCnxnFactory() {
         bootstrap = new ServerBootstrap(new NioServerSocketChannelFactory(Executors.newCachedThreadPool(), Executors.newCachedThreadPool()));
         // parent channel

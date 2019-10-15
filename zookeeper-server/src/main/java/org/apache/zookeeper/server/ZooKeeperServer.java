@@ -990,6 +990,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         // Through the magic of byte buffers, txn will not be pointing to the start of the txn
         // 通过字节缓冲区的魔力，txn将不会指向txn的开头
         incomingBuffer = incomingBuffer.slice();
+        //认证逻辑
         if (h.getType() == OpCode.auth) {
             //认证包
             LOG.info("got auth packet " + cnxn.getRemoteSocketAddress());

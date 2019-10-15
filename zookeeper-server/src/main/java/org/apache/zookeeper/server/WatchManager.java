@@ -39,12 +39,19 @@ import org.apache.zookeeper.Watcher.Event.KeeperState;
  * </p>
  */
 public class WatchManager {
+
     private static final Logger LOG = LoggerFactory.getLogger(WatchManager.class);
 
+    //存储路径和订阅路径的watcher集合
     private final HashMap<String, HashSet<Watcher>> watchTable = new HashMap<String, HashSet<Watcher>>();
 
+    //一个Watcher订阅相关的路径
     private final HashMap<Watcher, HashSet<String>> watch2Paths = new HashMap<Watcher, HashSet<String>>();
 
+    /**
+     * 数量
+     * @return
+     */
     public synchronized int size(){
         int result = 0;
         for(Set<Watcher> watches : watchTable.values()) {
@@ -53,6 +60,11 @@ public class WatchManager {
         return result;
     }
 
+    /**
+     * 为一个节点添加相关的watch
+     * @param path
+     * @param watcher
+     */
     public synchronized void addWatch(String path, Watcher watcher) {
         HashSet<Watcher> list = watchTable.get(path);
         if (list == null) {
@@ -89,6 +101,12 @@ public class WatchManager {
         }
     }
 
+    /**
+     * 触发监听器
+     * @param path
+     * @param type
+     * @return
+     */
     public Set<Watcher> triggerWatch(String path, EventType type) {
         return triggerWatch(path, type, null);
     }

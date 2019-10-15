@@ -91,11 +91,14 @@ public class DataTree {
     private final ConcurrentHashMap<String, DataNode> nodes =
         new ConcurrentHashMap<String, DataNode>();
 
+    //数据节点管理器
     private final WatchManager dataWatches = new WatchManager();
 
+    //子节点管理器
     private final WatchManager childWatches = new WatchManager();
 
-    /** the root of zookeeper tree */
+    /** the root of zookeeper tree
+     * 数据树的根 */
     private static final String rootZookeeper = "/";
 
     /** the zookeeper nodes that acts as the management and status node **/
@@ -364,14 +367,15 @@ public class DataTree {
     }
 
     /**
-     * @param path
-     * @param data
-     * @param acl
-     * @param ephemeralOwner
+     * 构建一个Node
+     * @param path 路径
+     * @param data 数据
+     * @param acl 控制项
+     * @param ephemeralOwner 拥有这个node的session id 如果是-1 代表了临时节点
      *            the session id that owns this node. -1 indicates this is not
      *            an ephemeral node.
-     * @param zxid
-     * @param time
+     * @param zxid 事务id
+     * @param time 时间
      * @return the patch of the created node
      * @throws KeeperException
      */
@@ -391,10 +395,12 @@ public class DataTree {
         stat.setVersion(0);
         stat.setAversion(0);
         stat.setEphemeralOwner(ephemeralOwner);
+        //获得父路径
         DataNode parent = nodes.get(parentName);
         if (parent == null) {
             throw new KeeperException.NoNodeException();
         }
+        //锁住父节点
         synchronized (parent) {
             Set<String> children = parent.getChildren();
             if (children.contains(childName)) {
@@ -408,6 +414,7 @@ public class DataTree {
             parent.stat.setCversion(parentCVersion);
             parent.stat.setPzxid(zxid);
             Long longval = aclCache.convertAcls(acl);
+            //构建node
             DataNode child = new DataNode(parent, data, longval, stat);
             parent.addChild(childName);
             nodes.put(path, child);
@@ -443,6 +450,7 @@ public class DataTree {
             updateBytes(lastPrefix, data == null ? 0 : data.length);
         }
         dataWatches.triggerWatch(path, Event.EventType.NodeCreated);
+        //为监听的节点触发子节点发生变更的事情
         childWatches.triggerWatch(parentName.equals("") ? "/" : parentName,
                 Event.EventType.NodeChildrenChanged);
         return path;
