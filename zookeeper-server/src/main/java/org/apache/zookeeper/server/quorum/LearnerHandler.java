@@ -63,18 +63,27 @@ public class LearnerHandler extends ZooKeeperThread {
 
     private static final Logger LOG = LoggerFactory.getLogger(LearnerHandler.class);
 
+    //网络socket
     protected final Socket sock;    
 
     public Socket getSocket() {
         return sock;
     }
 
+    //leader对象
     final Leader leader;
 
     /** Deadline for receiving the next ack. If we are bootstrapping then
      * it's based on the initLimit, if we are done bootstrapping it's based
      * on the syncLimit. Once the deadline is past this learner should
-     * be considered no longer "sync'd" with the leader. */
+     * be considered no longer "sync'd" with the leader.
+     * <p>
+     *     收到下一个ack的最后期限。
+     *     1. 如果我们正在引导，那么它基于initLimit，
+     *     2. 如果我们完成了引导，则它基于syncLimit。
+     *     一旦超过最后期限，该learner将不再被视为与领导者“同步”1
+     * </p>
+     * */
     volatile long tickOfNextAckDeadline;
     
     /**
@@ -324,7 +333,9 @@ public class LearnerHandler extends ZooKeeperThread {
     @Override
     public void run() {
         try {
+            //将处理器添加到leader中
             leader.addLearnerHandler(this);
+
             //下一次ack时间deadLine
             tickOfNextAckDeadline = leader.self.tick.get() + leader.self.initLimit + leader.self.syncLimit;
 
@@ -332,19 +343,22 @@ public class LearnerHandler extends ZooKeeperThread {
             bufferedOutput = new BufferedOutputStream(sock.getOutputStream());
             oa = BinaryOutputArchive.getArchive(bufferedOutput);
 
-            //构建quorum通信包
+            //构建quorum通信包，读取相关的内容
             QuorumPacket qp = new QuorumPacket();
             ia.readRecord(qp, "packet");
+
+            //校验
             if(qp.getType() != Leader.FOLLOWERINFO && qp.getType() != Leader.OBSERVERINFO){
                 //类型不是FOLLOWERINFO和OBSERVERINFO，打印一下错误，然后我们忽略他，并返回
             	LOG.error("First packet " + qp.toString() + " is not FOLLOWERINFO or OBSERVERINFO!");
                 return;
             }
-            //包数据
+            //包数据，也就是learner的相关信息
             byte learnerInfoData[] = qp.getData();
 
             if (learnerInfoData != null) {
-            	if (learnerInfoData.length == 8) { //长度是8，是一个特殊的包
+            	if (learnerInfoData.length == 8) {
+            	    //长度是8，是一个特殊的包，仅仅携带标识符sid
             		ByteBuffer bbsid = ByteBuffer.wrap(learnerInfoData);
             		this.sid = bbsid.getLong();
             	} else {
@@ -361,6 +375,7 @@ public class LearnerHandler extends ZooKeeperThread {
             LOG.info("Follower sid: " + sid + " : info : " + leader.self.quorumPeers.get(sid));
                         
             if (qp.getType() == Leader.OBSERVERINFO) {
+                //类型处理
                   learnerType = LearnerType.OBSERVER;
             }            
 
@@ -369,7 +384,10 @@ public class LearnerHandler extends ZooKeeperThread {
             
             long peerLastZxid;
             StateSummary ss = null;
+            //包中的zxid
             long zxid = qp.getZxid();
+
+            //获得新得Epoch
             long newEpoch = leader.getEpochToPropose(this.getSid(), lastAcceptedEpoch);
             
             if (this.getVersion() < 0x10000) {
@@ -381,9 +399,11 @@ public class LearnerHandler extends ZooKeeperThread {
             } else {
                 byte ver[] = new byte[4];
                 ByteBuffer.wrap(ver).putInt(0x10000);
+                //构建leaderInfo，稍后用于发送给follower
                 QuorumPacket newEpochPacket = new QuorumPacket(Leader.LEADERINFO, ZxidUtils.makeZxid(newEpoch, 0), ver, null);
                 oa.writeRecord(newEpochPacket, "packet");
                 bufferedOutput.flush();
+                //构建确认Epoch的Packet
                 QuorumPacket ackEpochPacket = new QuorumPacket();
                 ia.readRecord(ackEpochPacket, "packet");
                 if (ackEpochPacket.getType() != Leader.ACKEPOCH) {
@@ -418,6 +438,7 @@ public class LearnerHandler extends ZooKeeperThread {
                         +" minCommittedLog=0x"+Long.toHexString(minCommittedLog)
                         +" peerLastZxid=0x"+Long.toHexString(peerLastZxid));
 
+                //获得已经提交上的议案
                 LinkedList<Proposal> proposals = leader.zk.getZKDatabase().getCommittedLog();
 
                 if (peerLastZxid == leader.zk.getZKDatabase().getDataTreeLastProcessedZxid()) {
@@ -466,11 +487,13 @@ public class LearnerHandler extends ZooKeeperThread {
                                     }
                                 }
                                 queuePacket(propose.packet);
+                                //构建提交packet
                                 QuorumPacket qcommit = new QuorumPacket(Leader.COMMIT, propose.packet.getZxid(), null, null);
                                 queuePacket(qcommit);
                             }
                         }
                     } else if (peerLastZxid > maxCommittedLog) {
+                        //发送阶段的packet让他截断
                         LOG.debug("Sending TRUNC to follower zxidToSend=0x{} updates=0x{}",
                                 Long.toHexString(maxCommittedLog),
                                 Long.toHexString(updates));
@@ -493,6 +516,7 @@ public class LearnerHandler extends ZooKeeperThread {
                 rl.unlock();
             }
 
+            //领导者发送此消息类型以指示它的zxid以及（如果需要）其数据库。
              QuorumPacket newLeaderQP = new QuorumPacket(Leader.NEWLEADER, ZxidUtils.makeZxid(newEpoch, 0), null, null);
              if (getVersion() < 0x10000) {
                 oa.writeRecord(newLeaderQP, "packet");
@@ -507,7 +531,8 @@ public class LearnerHandler extends ZooKeeperThread {
             oa.writeRecord(new QuorumPacket(packetToSend, zxidToSend, null, null), "packet");
             bufferedOutput.flush();
             
-            /* if we are not truncating or sending a diff just send a snapshot */
+            /* if we are not truncating or sending a diff just send a snapshot
+             * 如果我们不截断或发送差异仅发送快照 */
             if (packetToSend == Leader.SNAP) {
                 LOG.info("Sending snapshot last zxid of peer is 0x" + Long.toHexString(peerLastZxid) + " "
                         + " zxid of leader is 0x" + Long.toHexString(leaderLastZxid)

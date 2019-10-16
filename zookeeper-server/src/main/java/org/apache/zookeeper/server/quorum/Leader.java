@@ -90,6 +90,7 @@ public class Leader {
     protected boolean quorumFormed = false;
     
     // the follower acceptor thread
+    // 处理follower连接的线程
     LearnerCnxAcceptor cnxAcceptor;
     
     // list of all the followers
@@ -323,6 +324,7 @@ public class Leader {
      * learner接受者，接收learner的连接，并加入自己维护的结构中
      */
     class LearnerCnxAcceptor extends ZooKeeperThread{
+
         private volatile boolean stop = false;
 
         public LearnerCnxAcceptor() {
@@ -345,7 +347,9 @@ public class Leader {
                         s.setTcpNoDelay(nodelay);
 
                         BufferedInputStream is = new BufferedInputStream(s.getInputStream());
+                        //构建一线程处理器，用于出来连接上来的线程
                         LearnerHandler fh = new LearnerHandler(s, is, Leader.this);
+                        //运行
                         fh.start();
                     } catch (SocketException e) {
                         if (stop) {
@@ -895,6 +899,15 @@ public class Leader {
     }
     // VisibleForTesting
     protected Set<Long> connectingFollowers = new HashSet<Long>();
+
+    /**
+     * 构建用于提交议案的Propose
+     * @param sid 标识符
+     * @param lastAcceptedEpoch 最后的expoch
+     * @return
+     * @throws InterruptedException
+     * @throws IOException
+     */
     public long getEpochToPropose(long sid, long lastAcceptedEpoch) throws InterruptedException, IOException {
         synchronized(connectingFollowers) {
             if (!waitingForNewEpoch) {
