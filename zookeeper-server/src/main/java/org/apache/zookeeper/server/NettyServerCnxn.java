@@ -70,10 +70,15 @@ public class NettyServerCnxn extends ServerCnxn {
     /** The ZooKeeperServer for this connection. May be null if the server
      * is not currently serving requests (for example if the server is not
      * an active quorum participant.
+     * <p>
+     *     该连接的ZooKeeperServer。
+     *     如果服务器当前不正在处理请求，则可以为null（例如，如果服务器不是活动的仲裁参与者）。
+     * </p>
      */
     private volatile ZooKeeperServer zkServer;
 
     NettyServerCnxnFactory factory;
+    //初始化标记
     boolean initialized;
     
     NettyServerCnxn(Channel channel, ZooKeeperServer zks, NettyServerCnxnFactory factory) {
@@ -779,6 +784,7 @@ public class NettyServerCnxn extends ServerCnxn {
                                 disableRecvNoWait();
                             }
                         } else {
+                            //获取来自远程地址的连接
                             LOG.debug("got conn req request from " + getRemoteSocketAddress());
                             zks.processConnectRequest(this, bb);
                             initialized = true;
@@ -802,15 +808,11 @@ public class NettyServerCnxn extends ServerCnxn {
                         bbLen.flip();
 
                         if (LOG.isTraceEnabled()) {
-                            LOG.trace(Long.toHexString(sessionId)
-                                    + " bbLen 0x"
-                                    + ChannelBuffers.hexDump(
-                                            ChannelBuffers.copiedBuffer(bbLen)));
+                            LOG.trace(Long.toHexString(sessionId) + " bbLen 0x" + ChannelBuffers.hexDump(ChannelBuffers.copiedBuffer(bbLen)));
                         }
                         int len = bbLen.getInt();
                         if (LOG.isTraceEnabled()) {
-                            LOG.trace(Long.toHexString(sessionId)
-                                    + " bbLen len is " + len);
+                            LOG.trace(Long.toHexString(sessionId) + " bbLen len is " + len);
                         }
 
                         bbLen.clear();

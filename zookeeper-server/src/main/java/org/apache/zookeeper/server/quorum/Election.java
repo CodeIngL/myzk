@@ -30,10 +30,10 @@ public interface Election {
      * @return 最终的投票
      * @throws InterruptedException
      */
-    public Vote lookForLeader() throws InterruptedException;
+    Vote lookForLeader() throws InterruptedException;
 
     /**
      * 结束关闭
      */
-    public void shutdown();
+    void shutdown();
 }

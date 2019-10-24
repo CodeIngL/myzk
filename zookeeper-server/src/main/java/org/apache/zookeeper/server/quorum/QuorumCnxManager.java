@@ -545,7 +545,7 @@ public class QuorumCnxManager {
     public void toSend(Long sid, ByteBuffer b) {
         /*
          * If sending message to myself, then simply enqueue it (loopback).
-         * 如果发送个的是自己，直接转换到接收队列中
+         * 如果发送给自己，直接转换到接收队列中
          */
         if (this.mySid == sid) {
              b.position(0);
@@ -556,10 +556,13 @@ public class QuorumCnxManager {
         } else {
              /*
               * Start a new connection if doesn't have one already.
+              * <p>
+              *     如果尚未建立新连接，请开始。
               */
              ArrayBlockingQueue<ByteBuffer> bq = new ArrayBlockingQueue<ByteBuffer>(SEND_CAPACITY);
              ArrayBlockingQueue<ByteBuffer> bqExisting = queueSendMap.putIfAbsent(sid, bq);
              if (bqExisting != null) {
+                 //不存在
                  addToSendQueue(bqExisting, b);
              } else {
                  addToSendQueue(bq, b);
@@ -577,6 +580,7 @@ public class QuorumCnxManager {
      */
     synchronized public void connectOne(long sid){
         if (!connectedToPeer(sid)){
+            //未连接，尝试连接
             InetSocketAddress electionAddr;
             if (view.containsKey(sid)) {
                 electionAddr = view.get(sid).electionAddr;

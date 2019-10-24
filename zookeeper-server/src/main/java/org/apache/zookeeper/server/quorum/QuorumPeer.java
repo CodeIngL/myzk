@@ -697,15 +697,14 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                 //获得当前的currentEpoch
                 currentEpoch = readLongFromFile(CURRENT_EPOCH_FILENAME);
                 if (epochOfZxid > currentEpoch && updating.exists()) {
-                    LOG.info("{} found. The server was terminated after " +
-                                    "taking a snapshot but before updating current epoch. Setting current epoch to {}.",
+                    //服务再快照之后，但是在更新当前的epoch之前
+                    LOG.info("{} found. The server was terminated after taking a snapshot but before updating current epoch. Setting current epoch to {}.",
                             UPDATING_EPOCH_FILENAME, epochOfZxid);
                     //使用当前的epoch
                     setCurrentEpoch(epochOfZxid);
-                    //删除临时的文件
+                    //删除临时的保存文件
                     if (!updating.delete()) {
-                        throw new IOException("Failed to delete " +
-                                updating.toString());
+                        throw new IOException("Failed to delete " + updating.toString());
                     }
                 }
             } catch (FileNotFoundException e) {
@@ -713,12 +712,12 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                 // this should only happen once when moving to a
                 // new code version
                 currentEpoch = epochOfZxid;
-                LOG.info(CURRENT_EPOCH_FILENAME
-                                + " not found! Creating with a reasonable default of {}. This should only happen when you are upgrading your installation",
+                LOG.info(CURRENT_EPOCH_FILENAME + " not found! Creating with a reasonable default of {}. This should only happen when you are upgrading your installation",
                         currentEpoch);
                 writeLongToFile(CURRENT_EPOCH_FILENAME, currentEpoch);
             }
-            //校验
+
+            //校验，内存的大于当前的，抛出错误
             if (epochOfZxid > currentEpoch) {
                 throw new IOException("The current epoch, " + ZxidUtils.zxidToString(currentEpoch) + ", is older than the last zxid, " + lastProcessedZxid);
             }
@@ -731,13 +730,12 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                 // this should only happen once when moving to a
                 // new code version
                 acceptedEpoch = epochOfZxid;
-                LOG.info(ACCEPTED_EPOCH_FILENAME
-                                + " not found! Creating with a reasonable default of {}. This should only happen when you are upgrading your installation",
+                LOG.info(ACCEPTED_EPOCH_FILENAME + " not found! Creating with a reasonable default of {}. This should only happen when you are upgrading your installation",
                         acceptedEpoch);
                 //写回文件
                 writeLongToFile(ACCEPTED_EPOCH_FILENAME, acceptedEpoch);
             }
-            //校验
+            //校验，可接受的小于当前的，抛出错误
             if (acceptedEpoch < currentEpoch) {
                 throw new IOException("The accepted epoch, " + ZxidUtils.zxidToString(acceptedEpoch) + " is less than the current epoch, " + ZxidUtils.zxidToString(currentEpoch));
             }
@@ -928,14 +926,16 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     }
 
     /**
-     * 端点循环
+     * 端点本身的循环
      */
     @Override
     public void run() {
         //线程名字
         setName("QuorumPeer" + "[myid=" + getId() + "]" + cnxnFactory.getLocalAddress());
 
+        //启动quorum端点
         LOG.debug("Starting quorum peer");
+        //注册jmx
         try {
             jmxQuorumBean = new QuorumBean(this);
             MBeanRegistry.getInstance().register(jmxQuorumBean, null);
@@ -963,10 +963,11 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             jmxQuorumBean = null;
         }
 
+
         try {
             /*
              * Main loop
-             * 主要的事件循环
+             * 端点本身的事件循环
              */
             while (running) {
                 //根据端点的状态进行不同的逻辑处理
@@ -1036,6 +1037,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                         } catch (Exception e) {
                             LOG.warn("Unexpected exception", e);
                         } finally {
+                            //关闭observer，重新转换为Looking
                             observer.shutdown();
                             setObserver(null);
                             setPeerState(ServerState.LOOKING);
@@ -1049,6 +1051,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                         } catch (Exception e) {
                             LOG.warn("Unexpected exception", e);
                         } finally {
+                            //关闭follower，重新转换为Looking
                             follower.shutdown();
                             setFollower(null);
                             setPeerState(ServerState.LOOKING);
@@ -1063,6 +1066,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                         } catch (Exception e) {
                             LOG.warn("Unexpected exception", e);
                         } finally {
+                            //关闭leader，重新转换为Looking
                             if (leader != null) {
                                 leader.shutdown("Forcing shutdown");
                                 setLeader(null);
@@ -1073,8 +1077,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                 }
             }
         } finally {
-            //结束all
+            //端点结束
             LOG.warn("QuorumPeer main thread exited");
+            //取消jmx的注册
             try {
                 MBeanRegistry.getInstance().unregisterAll();
             } catch (Exception e) {
@@ -1085,6 +1090,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         }
     }
 
+    /**
+     * 关掉
+     */
     public void shutdown() {
         running = false;
         if (leader != null) {

@@ -127,6 +127,9 @@ public class QuorumPeerConfig {
 
     /**
      * Parse a ZooKeeper configuration file
+     * <p>
+     *     解析ZooKeeper配置文件
+     * </p>
      * @param path the patch of the configuration file
      * @throws ConfigException error processing configuration
      */
@@ -137,8 +140,7 @@ public class QuorumPeerConfig {
 
         try {
             if (!configFile.exists()) {
-                throw new IllegalArgumentException(configFile.toString()
-                        + " file is missing");
+                throw new IllegalArgumentException(configFile.toString() + " file is missing");
             }
 
             Properties cfg = new Properties();

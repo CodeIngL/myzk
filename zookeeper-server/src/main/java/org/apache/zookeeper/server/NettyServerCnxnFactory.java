@@ -139,6 +139,7 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("New message " + e.toString() + " from " + ctx.getChannel());
                 }
+                //获得消息连接
                 NettyServerCnxn cnxn = (NettyServerCnxn)ctx.getAttachment();
                 synchronized(cnxn) {
                     processMessage(e, cnxn);
@@ -159,12 +160,14 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
                 LOG.debug(Long.toHexString(cnxn.sessionId) + " queuedBuffer: " + cnxn.queuedBuffer);
             }
 
+            //重置事件
             if (e instanceof NettyServerCnxn.ResumeMessageEvent) {
                 LOG.debug("Received ResumeMessageEvent");
                 if (cnxn.queuedBuffer != null) {
                     if (LOG.isTraceEnabled()) {
                         LOG.trace("processing queue " + Long.toHexString(cnxn.sessionId) + " queuedBuffer 0x" + ChannelBuffers.hexDump(cnxn.queuedBuffer));
                     }
+                    //接收消息
                     cnxn.receiveMessage(cnxn.queuedBuffer);
                     if (!cnxn.queuedBuffer.readable()) {
                         LOG.debug("Processed queue - no bytes remaining");
@@ -182,10 +185,12 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
                 if (LOG.isTraceEnabled()) {
                     LOG.trace(Long.toHexString(cnxn.sessionId) + " buf 0x" + ChannelBuffers.hexDump(buf));
                 }
-                
+
+                //受限的
                 if (cnxn.throttled) {
                     LOG.debug("Received message while throttled");
                     // we are throttled, so we need to queue
+                    // 我们受到限制，所以我们需要排队
                     if (cnxn.queuedBuffer == null) {
                         LOG.debug("allocating queue");
                         cnxn.queuedBuffer = dynamicBuffer(buf.readableBytes());

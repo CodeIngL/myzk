@@ -109,17 +109,16 @@ public class QuorumPeerMain {
         // Start and schedule the the purge task
         // 开始并调度清理任务
         DatadirCleanupManager purgeMgr = new DatadirCleanupManager(config
-                .getDataDir(), config.getDataLogDir(), config
-                .getSnapRetainCount(), config.getPurgeInterval());
+                .getDataDir(), config.getDataLogDir(), config.getSnapRetainCount(), config.getPurgeInterval());
         purgeMgr.start();
 
         if (args.length == 1 && config.servers.size() > 0) {
+            //集群模式
             runFromConfig(config);
         } else {
-            LOG.warn("Either no config or no quorum defined in config, running "
-                    + " in standalone mode");
+            LOG.warn("Either no config or no quorum defined in config, running  in standalone mode");
             // there is only server in the quorum -- run as standalone
-            // 运行独立模式
+            // 独立模式
             ZooKeeperServerMain.main(args);
         }
     }
@@ -139,18 +138,15 @@ public class QuorumPeerMain {
       LOG.info("Starting quorum peer");
       try {
           ServerCnxnFactory cnxnFactory = ServerCnxnFactory.createFactory();
-          cnxnFactory.configure(config.getClientPortAddress(),
-                                config.getMaxClientCnxns());
+          cnxnFactory.configure(config.getClientPortAddress(), config.getMaxClientCnxns());
 
           //获得端点
           quorumPeer = getQuorumPeer();
 
           //设置集群的对端
           quorumPeer.setQuorumPeers(config.getServers());
-          //
-          quorumPeer.setTxnFactory(new FileTxnSnapLog(
-                  new File(config.getDataLogDir()),
-                  new File(config.getDataDir())));
+          //设置事务工厂
+          quorumPeer.setTxnFactory(new FileTxnSnapLog(new File(config.getDataLogDir()), new File(config.getDataDir())));
           //选举算法
           quorumPeer.setElectionType(config.getElectionAlg());
           //机器id
@@ -161,33 +157,48 @@ public class QuorumPeerMain {
           quorumPeer.setInitLimit(config.getInitLimit());
           //同步限制
           quorumPeer.setSyncLimit(config.getSyncLimit());
+          //是否在所有ip上监听
           quorumPeer.setQuorumListenOnAllIPs(config.getQuorumListenOnAllIPs());
+          //连接工厂
           quorumPeer.setCnxnFactory(cnxnFactory);
+          //是否进行验证
           quorumPeer.setQuorumVerifier(config.getQuorumVerifier());
+          //设置客户端地址
           quorumPeer.setClientPortAddress(config.getClientPortAddress());
+          //设置最小session超时时间
           quorumPeer.setMinSessionTimeout(config.getMinSessionTimeout());
+          //设置最大session超时时间
           quorumPeer.setMaxSessionTimeout(config.getMaxSessionTimeout());
+          //设置内存数据库
           quorumPeer.setZKDatabase(new ZKDatabase(quorumPeer.getTxnFactory()));
+          //设置leaner类型
           quorumPeer.setLearnerType(config.getPeerType());
+          //设置是否开启同步
           quorumPeer.setSyncEnabled(config.getSyncEnabled());
-
           // sets quorum sasl authentication configurations
           // 设置认证相关，如果配置了相关的配置的话
           quorumPeer.setQuorumSaslEnabled(config.quorumEnableSasl);
           if(quorumPeer.isQuorumSaslAuthEnabled()){
+              //sasl相关
               quorumPeer.setQuorumServerSaslRequired(config.quorumServerRequireSasl);
+              //sasl相关
               quorumPeer.setQuorumLearnerSaslRequired(config.quorumLearnerRequireSasl);
+              //准则
               quorumPeer.setQuorumServicePrincipal(config.quorumServicePrincipal);
+              //设置上下文
               quorumPeer.setQuorumServerLoginContext(config.quorumServerLoginContext);
+              //设置上下文
               quorumPeer.setQuorumLearnerLoginContext(config.quorumLearnerLoginContext);
           }
 
+          //设置quorum线程数量
           quorumPeer.setQuorumCnxnThreadsSize(config.quorumCnxnThreadsSize);
           //初始化
           quorumPeer.initialize();
 
           //开始
           quorumPeer.start();
+          //等待结束
           quorumPeer.join();
       } catch (InterruptedException e) {
           // warn, but generally this is ok

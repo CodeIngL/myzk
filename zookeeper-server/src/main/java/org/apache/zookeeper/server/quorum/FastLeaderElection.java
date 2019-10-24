@@ -137,12 +137,17 @@ public class FastLeaderElection implements Election {
                     + Long.toHexString(peerEpoch) + " (n.peerEpoch) ";
         }
     }
-    
-    static ByteBuffer buildMsg(int state,
-            long leader,
-            long zxid,
-            long electionEpoch,
-            long epoch) {
+
+    /**
+     * 构建消息
+     * @param state
+     * @param leader
+     * @param zxid
+     * @param electionEpoch
+     * @param epoch
+     * @return
+     */
+    static ByteBuffer buildMsg(int state, long leader, long zxid, long electionEpoch, long epoch) {
         byte requestBytes[] = new byte[40];
         ByteBuffer requestBuffer = ByteBuffer.wrap(requestBytes);
 
@@ -151,11 +156,17 @@ public class FastLeaderElection implements Election {
          */
 
         requestBuffer.clear();
+        //状态
         requestBuffer.putInt(state);
+        //leader
         requestBuffer.putLong(leader);
+        //zxid
         requestBuffer.putLong(zxid);
+        //选举epoch
         requestBuffer.putLong(electionEpoch);
+        //epoch
         requestBuffer.putLong(epoch);
+        //版本
         requestBuffer.putInt(Notification.CURRENTVERSION);
         
         return requestBuffer;
@@ -445,7 +456,6 @@ public class FastLeaderElection implements Election {
          *     该worker仅使要发送的消息出队，并将其排队在manager的队列中。
          * </p>
          */
-
         class WorkerSender extends ZooKeeperThread {
             volatile boolean stop;
             QuorumCnxManager manager;
@@ -462,9 +472,10 @@ public class FastLeaderElection implements Election {
             public void run() {
                 while (!stop) {
                     try {
+                        //拉取待发送的队列
                         ToSend m = sendqueue.poll(3000, TimeUnit.MILLISECONDS);
                         if(m == null) continue;
-
+                        //处理待发送的内容
                         process(m);
                     } catch (InterruptedException e) {
                         break;
@@ -610,6 +621,7 @@ public class FastLeaderElection implements Election {
         for (QuorumServer server : self.getVotingView().values()) {
             long sid = server.id;
 
+            //构建发送消息
             ToSend notmsg = new ToSend(ToSend.mType.notification, proposedLeader, proposedZxid, logicalclock.get(), QuorumPeer.ServerState.LOOKING, sid, proposedEpoch);
             if(LOG.isDebugEnabled()){
                 LOG.debug("Sending Notification: " + proposedLeader + " (n.leader), 0x"  + Long.toHexString(proposedZxid) + " (n.zxid), 0x" + Long.toHexString(logicalclock.get())  +
@@ -832,6 +844,7 @@ public class FastLeaderElection implements Election {
      * </p>
      */
     public Vote lookForLeader() throws InterruptedException {
+        //注册jmx
         try {
             self.jmxLeaderElectionBean = new LeaderElectionBean();
             MBeanRegistry.getInstance().register(self.jmxLeaderElectionBean, self.jmxLocalPeerBean);
@@ -856,6 +869,7 @@ public class FastLeaderElection implements Election {
 
             synchronized(this){
                 logicalclock.incrementAndGet();
+                //跟新议案
                 updateProposal(getInitId(), getInitLastLoggedZxid(), getPeerEpoch());
             }
 
